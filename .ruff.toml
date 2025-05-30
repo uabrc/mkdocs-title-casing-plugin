@@ -12,6 +12,7 @@ ignore = [
 select = ["ALL"]
 
 [lint.per-file-ignores]
+"setup.py" = ["D100"]
 "test/*" = ["PT", "D100", "D101", "D102", "D107"]
 
 [format]
