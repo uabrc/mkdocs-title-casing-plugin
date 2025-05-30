@@ -47,3 +47,14 @@ plugins:
       capitalization_type: title
       mode: warn
 ```
+
+## Development
+
+- Set up the environment in Miniforge with `conda env create --file environment.yml` to enable testing.
+- Activate the environment.
+- Run `pip install -e .`.
+
+### Tests
+
+- Run tests with `unittest`.
+- Also run `mkdocs build` to check against mock documentation included in the repo.

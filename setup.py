@@ -20,7 +20,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        "mkdocs>=1.4",
+        "mkdocs>=1.5",
         "titlecase>=2.3",
     ],
     license="GPLv3",
