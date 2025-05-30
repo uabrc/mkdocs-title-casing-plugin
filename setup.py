@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-file = open("README.md", "r")
+file = open("README.md")
 LONG_DESCRIPTION = file.read()
 file.close()
 
@@ -17,7 +17,7 @@ setup(
     include_package_data=True,
     install_requires=[
         "mkdocs>=1.0",
-        "titlecase>=2.3"
+        "titlecase>=2.3",
     ],
     license="GPLv3",
     python_requires=">=3.6",
@@ -32,7 +32,7 @@ setup(
     ],
     entry_points={
         "mkdocs.plugins": [
-            "title-casing = mkdocs_title_casing_plugin.plugin:TitleCasingPlugin"
-        ]
+            "title-casing = mkdocs_title_casing_plugin.plugin:TitleCasingPlugin",
+        ],
     },
 )
