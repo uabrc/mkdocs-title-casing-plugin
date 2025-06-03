@@ -5,11 +5,8 @@ from __future__ import annotations
 import abc
 import logging
 import re
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from mkdocs.config import config_options
-from mkdocs.config.base import Config
 from mkdocs.exceptions import ConfigurationError
 from mkdocs.plugins import BasePlugin
 from mkdocs.structure import StructureItem
@@ -17,6 +14,12 @@ from mkdocs.structure.files import Files
 from mkdocs.structure.nav import Link, Navigation, Section
 from mkdocs.structure.pages import Page
 from titlecase import titlecase
+
+from mkdocs_title_casing_plugin.config import (
+    TitleCasingPluginConfig,
+    find_nav_line_number_in_config,
+    prepare_ignore_casefold_mapping,
+)
 
 if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
@@ -34,34 +37,24 @@ html_heading_re = re.compile(
 markdown_heading_re = re.compile(r"^(#+[ \t])(.*)$")
 
 
-class TitleCasingPluginConfig(Config):
-    """Config for this plugin."""
-
-    mode = config_options.Type(str, default="warn")
-    capitalization_type = config_options.Type(str, default="title")
-    default_page_name = config_options.Type(str, default="Home")
-
-
 class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
     """Plugin to check and warn of title case issues."""
 
     def __init__(self) -> None:
         """Initialize TitleCasingPlugin object."""
-        self._nav_starting_line_number: int = 0
+        self._nav_config_line_number: int = 0
 
     def on_config(self, config: MkDocsConfig) -> None:
         """Gather initialization information from config."""
         if config.nav is None:
             return
 
-        lines: list[str]
-        with Path(config.config_file_path).open("r") as f:
-            lines = f.readlines()
+        nav_config_line_number = find_nav_line_number_in_config(config)
+        if nav_config_line_number is None:
+            # This should never be hit, because we already checked there was no nav.
+            raise RuntimeError
 
-        for n, line in enumerate(lines, start=2):
-            if line.startswith("nav:"):
-                self._nav_starting_line_number = n
-                break
+        self._nav_config_line_number = nav_config_line_number
 
     def on_nav(
         self,
@@ -82,7 +75,7 @@ class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
             msg = f"Unexpected mode: {mode}"
             raise ConfigurationError(msg)
 
-        return strategy.on_nav(nav, self._nav_starting_line_number)
+        return strategy.on_nav(nav, self._nav_config_line_number)
 
     def on_page_content(
         self,
@@ -262,7 +255,9 @@ class WarningOnNavStrategy(OnNavStrategy):
         return link
 
     def _handle_structure_item(
-        self, item: Section | Page | Link, line_number: int
+        self,
+        item: Section | Page | Link,
+        line_number: int,
     ) -> None:
         self._handle_heading(
             item.title,  # pyright: ignore[reportArgumentType]
