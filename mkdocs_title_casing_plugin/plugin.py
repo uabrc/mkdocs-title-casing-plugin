@@ -43,6 +43,7 @@ class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
     def __init__(self) -> None:
         """Initialize TitleCasingPlugin object."""
         self._nav_config_line_number: int = 0
+        self._ignored_casefold_mapping: dict[str, str] = {}
 
     def on_config(self, config: MkDocsConfig) -> None:
         """Gather initialization information from config."""
@@ -55,6 +56,7 @@ class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
             raise RuntimeError
 
         self._nav_config_line_number = nav_config_line_number
+        self._ignored_casefold_mapping = prepare_ignore_casefold_mapping(self.config)
 
     def on_nav(
         self,
@@ -68,9 +70,13 @@ class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
 
         mode = self.config.mode
         if mode == "fix":
-            strategy = FixOnNavStrategy(self.config)
+            strategy = FixOnNavStrategy(self.config, self._ignored_casefold_mapping)
         elif mode == "warn":
-            strategy = WarningOnNavStrategy(self.config, self.config.config_file_path)
+            strategy = WarningOnNavStrategy(
+                self.config,
+                self.config.config_file_path,
+                self._ignored_casefold_mapping,
+            )
         else:
             msg = f"Unexpected mode: {mode}"
             raise ConfigurationError(msg)
@@ -95,9 +101,15 @@ class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
         """
         mode = self.config.mode
         if mode == "fix":
-            strategy = FixOnPageContentStrategy(self.config)
+            strategy = FixOnPageContentStrategy(
+                self.config,
+                self._ignored_casefold_mapping,
+            )
         elif mode == "warn":
-            strategy = WarningOnPageContentStrategy(self.config)
+            strategy = WarningOnPageContentStrategy(
+                self.config,
+                self._ignored_casefold_mapping,
+            )
         else:
             msg = f"Unexpected mode: {mode}"
             raise ConfigurationError(msg)
@@ -108,9 +120,14 @@ class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
 class Strategy:
     """Base class for all strategies."""
 
-    def __init__(self, config: TitleCasingPluginConfig) -> None:
+    def __init__(
+        self,
+        config: TitleCasingPluginConfig,
+        ignored_casefold_mapping: dict[str, str],
+    ) -> None:
         """Initialize new Strategy."""
-        self._config = config
+        self._config: TitleCasingPluginConfig = config
+        self._ignored_casefold_mapping: dict[str, str] = ignored_casefold_mapping
 
     def _handle_heading(
         self,
@@ -144,12 +161,20 @@ class Strategy:
         if capitalization_type == "first_letter":
             out = _v.title()
         elif capitalization_type == "title":
-            out = titlecase(_v)
+            out = titlecase(_v, callback=self._ignore_word)
         else:
             msg = f"Unexpected capitalization_type: {capitalization_type}."
             raise ConfigurationError(msg)
 
         return out.strip()
+
+    def _ignore_word(
+        self,
+        word: str,
+        **kwargs,  # noqa: ANN003, ARG002 | Required by titlecase callback
+    ) -> str | None:
+        folded = word.casefold()
+        return self._ignored_casefold_mapping.get(folded, None)
 
 
 class OnNavStrategy(Strategy, abc.ABC):
@@ -223,9 +248,14 @@ class OnNavStrategy(Strategy, abc.ABC):
 class WarningOnNavStrategy(OnNavStrategy):
     """Warn about heading case in on_nav()."""
 
-    def __init__(self, config: TitleCasingPluginConfig, config_file_path: str) -> None:
+    def __init__(
+        self,
+        config: TitleCasingPluginConfig,
+        config_file_path: str,
+        ignored_casefold_mapping: dict[str, str],
+    ) -> None:
         """Initialize WarningOnNavStrategy object."""
-        super().__init__(config)
+        super().__init__(config, ignored_casefold_mapping)
         self._config_file_path = config_file_path
 
     def _before_section(self) -> None:
@@ -272,9 +302,13 @@ class WarningOnNavStrategy(OnNavStrategy):
 class FixOnNavStrategy(OnNavStrategy):
     """Fixes heading case in on_nav()."""
 
-    def __init__(self, config: TitleCasingPluginConfig) -> None:
+    def __init__(
+        self,
+        config: TitleCasingPluginConfig,
+        ignored_casefold_mapping: dict[str, str],
+    ) -> None:
         """Initialize FixNavStrategy object."""
-        super().__init__(config)
+        super().__init__(config, ignored_casefold_mapping)
         self._pages: list[Page] = []
         self._items: list[Item] = []
 
@@ -373,9 +407,13 @@ class WarningOnPageContentStrategy(OnPageContentStrategy):
 class FixOnPageContentStrategy(OnPageContentStrategy):
     """Fix heading case in on_page_markdown()."""
 
-    def __init__(self, config: TitleCasingPluginConfig) -> None:
+    def __init__(
+        self,
+        config: TitleCasingPluginConfig,
+        ignored_casefold_mapping: dict[str, str],
+    ) -> None:
         """Initialize FixPageMarkdownStrategy object."""
-        super().__init__(config)
+        super().__init__(config, ignored_casefold_mapping)
         self._lines: list[str] = []
 
     def _handle_markdown_nonheading_line(self, line: str, _file_path: str) -> None:

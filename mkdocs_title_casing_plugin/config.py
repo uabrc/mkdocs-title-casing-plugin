@@ -20,6 +20,15 @@ class TitleCasingPluginConfig(Config):
     default_page_name = config_options.Type(str, default="Home")
 
 
+# class TitleCasingPluginConfig(Config):
+#     """Config for this plugin."""
+
+#     mode = config_options.Type(str, default="warn")
+#     capitalization_type = config_options.Type(str, default="title")
+#     # default_page_name = config_options.Type(str, default="Home")  # noqa: ERA001
+#     ignore_definition_file = config_options.Type(str, default=".title-casing-ignore")
+
+
 def find_nav_line_number_in_config(config: MkDocsConfig) -> int | None:
     """Find the starting line number of the nav entry in the config file."""
     with Path(config.config_file_path).open("r") as f:
@@ -30,3 +39,14 @@ def find_nav_line_number_in_config(config: MkDocsConfig) -> int | None:
             return n
 
     return None
+
+
+def prepare_ignore_casefold_mapping(config: TitleCasingPluginConfig) -> dict[str, str]:
+    """Prepare casefold-to-canonical mapping."""
+    if Path(config.ignore_definition_file).exists():
+        with Path(config.ignore_definition_file).open("r") as f:
+            ignored = [line.strip() for line in f]
+    else:
+        ignored = []
+
+    return {word.casefold(): word for word in ignored}
