@@ -20,6 +20,7 @@ from mkdocs_title_casing_plugin.config import (
     find_nav_line_number_in_config,
     prepare_ignore_casefold_mapping,
 )
+from mkdocs_title_casing_plugin.string_helpers import strip_code_tag_html
 
 if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
@@ -29,10 +30,12 @@ log = logging.getLogger(f"mkdocs.plugins.{__name__}")
 
 Item = Section | Page | Link | StructureItem
 
-html_heading_re = re.compile(
+PUNCTUATION = r"""!"“#$%&'‘()*+,\-–‒—―./:;?@[\\\]_`{|}~"""  # noqa: RUF001
+PUNCTUATION_CAPTURE_RE = re.compile(rf"([{PUNCTUATION}]*)(.*?)([{PUNCTUATION}]*)")
+HTML_HEADING_RE = re.compile(
     r"^([ \t]*<(?:h1|h2|h3|h4|h5|h6)[ \t]+(?:.*?=[^>]*?)>)"  # prefix: "<h1 id="id">""
     r"(.*?)"  # heading: "this IS a Heading"
-    r"(<.*)$",  # suffix: "<a>&para;</a></h1>"
+    r"((?:<a|<\/h)(?:.*))$",  # suffix: "<a>&para;</a></h1>"
 )
 
 
@@ -172,8 +175,16 @@ class Strategy:
         word: str,
         **kwargs,  # noqa: ANN003, ARG002 | Required by titlecase callback
     ) -> str | None:
-        folded = word.casefold()
-        return self._ignored_casefold_mapping.get(folded, None)
+        match = PUNCTUATION_CAPTURE_RE.fullmatch(word)
+        if match is None:
+            raise RuntimeError
+        prefix, stripped_word, suffix = match.groups()
+        stripped_casefold_word = stripped_word.casefold()
+        canonical_word = self._ignored_casefold_mapping.get(
+            stripped_casefold_word,
+            None,
+        )
+        return None if canonical_word is None else prefix + canonical_word + suffix
 
 
 class OnNavStrategy(Strategy, abc.ABC):
@@ -355,12 +366,17 @@ class OnPageContentStrategy(Strategy, abc.ABC):
         I've chosen to
         """
         for line in html.splitlines():
-            match = html_heading_re.fullmatch(line)
+            match = HTML_HEADING_RE.fullmatch(line)
             if match is not None:
-                self._handle_markdown_heading_line(
+                prefix, heading, suffix = (
                     match[1],
-                    match[2],
+                    strip_code_tag_html(match[2]),
                     match[3],
+                )
+                self._handle_markdown_heading_line(
+                    prefix,
+                    heading,
+                    suffix,
                     file_path,
                 )
             else:
