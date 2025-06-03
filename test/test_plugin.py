@@ -39,6 +39,8 @@ class LogHandler(logging.Handler):
 
 class TestStrategies(unittest.TestCase):
     def setUp(self) -> None:
+        self.maxDiff = None
+
         config = TitleCasingPluginConfig()
         # dummy nav to bypass "nav is None" guards
         config.nav = ""  # pyright: ignore[reportAttributeAccessIssue]
@@ -148,6 +150,7 @@ class TestStrategies(unittest.TestCase):
             '(7): Heading "section 2 page 5" should be "Section 2 Page 5".',
             '(8): Heading "section 2" should be "Section 2".',
             '(9): Heading "page 6" should be "Page 6".',
+            '(12): Heading "link" should be "Link".',
         ]
 
     def test_fix_on_page_content(self) -> None:
@@ -236,4 +239,5 @@ class ConfiguredMaker:
 
     def _make_file(self, file_src: str | None = None) -> File:
         path = "" if file_src is None else file_src
+        file_src = "" if file_src is None else file_src
         return File(path, file_src, "", True)  # noqa: FBT003
