@@ -21,13 +21,14 @@ plugins:
   - title-casing:
     - capitalization_type: title (default) | first_letter
     - mode: warn (default) | fix
+    - ignore_definition_file: str path (default .title-casing-ignore)
 ```
 
 > If this is the first `plugins` entry that you are adding, you should probably also add `search` as this is enabled by default.
 
 ## Usage
 
-When the plugin is enabled, all section and page titles will be converted to use Title Case. For example, `War and peace` becomes `War and Peace`.
+When the plugin is enabled, all section and page titles will be converted to use Title Case, except for words in the optional ".title-casing-ignore" file. For example, `War and peace` becomes `War and Peace`.
 
 ### Configuration
 
@@ -37,6 +38,10 @@ When the plugin is enabled, all section and page titles will be converted to use
 - `mode` (string)
   - `warn` - default - produces warnings
   - `fix` - changes titles in HTML ouptut
+- `ignore_definition_file`:
+  - String path to a file containing a list of words, one word per line.
+  - default: `.title-casing-ignore`
+  - Optional, if not supplied, no words will be ignored.
 
 #### Example mkdocs.yml
 
@@ -46,6 +51,7 @@ plugins:
   - title-casing:
       capitalization_type: title
       mode: warn
+      ignore_definition_file: .title-casing-ignore
 ```
 
 ## Development
