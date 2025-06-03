@@ -17,16 +17,8 @@ class TitleCasingPluginConfig(Config):
 
     mode = config_options.Type(str, default="warn")
     capitalization_type = config_options.Type(str, default="title")
-    default_page_name = config_options.Type(str, default="Home")
-
-
-# class TitleCasingPluginConfig(Config):
-#     """Config for this plugin."""
-
-#     mode = config_options.Type(str, default="warn")
-#     capitalization_type = config_options.Type(str, default="title")
-#     # default_page_name = config_options.Type(str, default="Home")  # noqa: ERA001
-#     ignore_definition_file = config_options.Type(str, default=".title-casing-ignore")
+    # default_page_name = config_options.Type(str, default="Home")  # noqa: ERA001
+    ignore_definition_file = config_options.Type(str, default=".title-casing-ignore")
 
 
 def find_nav_line_number_in_config(config: MkDocsConfig) -> int | None:
