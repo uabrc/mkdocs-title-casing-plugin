@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import abc
 import logging
-import re
 from typing import TYPE_CHECKING
 
 from mkdocs.exceptions import ConfigurationError
@@ -20,7 +19,10 @@ from mkdocs_title_casing_plugin.config import (
     find_nav_line_number_in_config,
     prepare_ignore_casefold_mapping,
 )
-from mkdocs_title_casing_plugin.string_helpers import strip_code_tag_html
+from mkdocs_title_casing_plugin.string_helpers import (
+    ignore_word,
+    parse_html_heading,
+)
 
 if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
@@ -29,14 +31,6 @@ if TYPE_CHECKING:
 log = logging.getLogger(f"mkdocs.plugins.{__name__}")
 
 Item = Section | Page | Link | StructureItem
-
-PUNCTUATION = r"""!"“#$%&'‘()*+,\-–‒—―./:;?@[\\\]_`{|}~"""  # noqa: RUF001
-PUNCTUATION_CAPTURE_RE = re.compile(rf"([{PUNCTUATION}]*)(.*?)([{PUNCTUATION}]*)")
-HTML_HEADING_RE = re.compile(
-    r"^([ \t]*<(?:h1|h2|h3|h4|h5|h6)[ \t]+(?:.*?=[^>]*?)>)"  # prefix: "<h1 id="id">""
-    r"(.*?)"  # heading: "this IS a Heading"
-    r"((?:<a|<\/h)(?:.*))$",  # suffix: "<a>&para;</a></h1>"
-)
 
 
 class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
@@ -163,28 +157,19 @@ class Strategy:
         if capitalization_type == "first_letter":
             out = _v.title()
         elif capitalization_type == "title":
-            out = titlecase(_v, callback=self._ignore_word)
+            out = titlecase(
+                _v,
+                callback=lambda word, **kwargs: ignore_word(
+                    self._ignored_casefold_mapping,
+                    word,
+                    **kwargs,
+                ),
+            )
         else:
             msg = f"Unexpected capitalization_type: {capitalization_type}."
             raise ConfigurationError(msg)
 
         return out.strip()
-
-    def _ignore_word(
-        self,
-        word: str,
-        **kwargs,  # noqa: ANN003, ARG002 | Required by titlecase callback
-    ) -> str | None:
-        match = PUNCTUATION_CAPTURE_RE.fullmatch(word)
-        if match is None:
-            raise RuntimeError
-        prefix, stripped_word, suffix = match.groups()
-        stripped_casefold_word = stripped_word.casefold()
-        canonical_word = self._ignored_casefold_mapping.get(
-            stripped_casefold_word,
-            None,
-        )
-        return None if canonical_word is None else prefix + canonical_word + suffix
 
 
 class OnNavStrategy(Strategy, abc.ABC):
@@ -366,17 +351,12 @@ class OnPageContentStrategy(Strategy, abc.ABC):
         I've chosen to
         """
         for line in html.splitlines():
-            match = HTML_HEADING_RE.fullmatch(line)
-            if match is not None:
-                prefix, heading, suffix = (
-                    match[1],
-                    strip_code_tag_html(match[2]),
-                    match[3],
-                )
+            parts = parse_html_heading(line)
+            if parts is not None:
                 self._handle_markdown_heading_line(
-                    prefix,
-                    heading,
-                    suffix,
+                    parts[0],
+                    parts[1],
+                    parts[2],
                     file_path,
                 )
             else:
