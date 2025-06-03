@@ -1,27 +1,13 @@
-# first heading
+# first heading - Warning
 
-Warning "First Heading".
+## Second heading - Warning
 
-## Second heading
+### third Heading - Warning
 
-Warning "Second Heading".
+#### fourth heading - Warning
 
-### third Heading
+##### fifth heading - Warning
 
-Warning "Third Heading".
+###### sixth heading - Warning
 
-#### fourth heading
-
-Warning "Fourth Heading".
-
-##### fifth heading
-
-Warning "Fifth Heading".
-
-###### sixth heading
-
-Warning "Sixth Heading".
-
-## This Heading Should Not Appear
-
-No warning.
+## This Heading Should Not Appear - No Warning
