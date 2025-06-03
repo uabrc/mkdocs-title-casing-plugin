@@ -32,9 +32,8 @@ Item = Section | Page | Link | StructureItem
 html_heading_re = re.compile(
     r"^([ \t]*<(?:h1|h2|h3|h4|h5|h6)[ \t]+(?:.*?=[^>]*?)>)"  # prefix: "<h1 id="id">""
     r"(.*?)"  # heading: "this IS a Heading"
-    r"(<.*)$",  # suffix: "<a>&para;</h1>"
+    r"(<.*)$",  # suffix: "<a>&para;</a></h1>"
 )
-markdown_heading_re = re.compile(r"^(#+[ \t])(.*)$")
 
 
 class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
