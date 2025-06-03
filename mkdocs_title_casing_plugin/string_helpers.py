@@ -22,17 +22,32 @@ def ignore_word(
 
     Strips surrounding punctuation, then casefolds. If the stripped, casefolded
     word is present in the mapping, then the mapped value is returned rewrapped
-    with its punctuation. If it is not present, then None is returned.
+    with its punctuation.
+
+    If it is not present, then attempt to find the word with its surrounding
+    punctuation. If present, then return the mapped value.
+
+    If still not present, return None.
 
     Used as callback in titlecase(..., callback, ...).
     """
     match = PUNCTUATION_CAPTURE_RE.fullmatch(word)
     if match is None:
         raise RuntimeError
+
     prefix, stripped_word, suffix = match.groups()
     stripped_casefold_word = stripped_word.casefold()
+
     canonical_word = ignored_casefolded_word_mapping.get(stripped_casefold_word)
-    return None if canonical_word is None else prefix + canonical_word + suffix
+    if canonical_word is not None:
+        return prefix + canonical_word + suffix
+
+    full_word = prefix + stripped_casefold_word + suffix
+    canonical_word = ignored_casefolded_word_mapping.get(full_word)
+    if canonical_word is not None:
+        return canonical_word
+
+    return None
 
 
 def parse_html_heading(line: str) -> tuple[str, str, str] | None:
