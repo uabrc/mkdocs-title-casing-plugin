@@ -6,10 +6,10 @@ plugins:
 
 nav:
   - home: page1.md # Home
-  - section1: # Section1
-      - a page: page2.md # A Page
-      - "": # no warning
-          - page3.md # no warning
-  - "": page4.md # no warning
-  - "": "https://127.0.0.1" # no warning
-  - home ip: "https://127.0.0.1" # Home Ip
+  - section1: # Warning
+      - a page: page2.md # Warning
+      - "": # No Warning
+          - page3.md # Warning
+  - "": page4.md # No Warning
+  - "": "https://127.0.0.1" # No Warning
+  - home ip: "https://127.0.0.1" # Warning

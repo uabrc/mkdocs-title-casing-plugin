@@ -21,7 +21,7 @@ from mkdocs_title_casing_plugin.config import (
 )
 from mkdocs_title_casing_plugin.string_helpers import (
     Term,
-    ignore_term,
+    is_term_ignored,
     parse_html_heading,
 )
 
@@ -40,7 +40,7 @@ class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
     def __init__(self) -> None:
         """Initialize TitleCasingPlugin object."""
         self._nav_config_line_number: int = 0
-        self._ignored_terms: dict[Term, Term] = {}
+        self._ignored_terms: dict[str, Term] = {}
 
     def on_config(self, config: MkDocsConfig) -> None:
         """Gather initialization information from config."""
@@ -120,11 +120,11 @@ class Strategy:
     def __init__(
         self,
         config: TitleCasingPluginConfig,
-        ignored_terms: dict[Term, Term],
+        ignored_terms: dict[str, Term],
     ) -> None:
         """Initialize new Strategy."""
         self._config: TitleCasingPluginConfig = config
-        self._ignored_terms: dict[Term, Term] = ignored_terms
+        self._ignored_terms: dict[str, Term] = ignored_terms
 
     def _handle_heading(
         self,
@@ -160,7 +160,7 @@ class Strategy:
         elif capitalization_type == "title":
             out = titlecase(
                 _v,
-                callback=lambda word, **kwargs: ignore_term(
+                callback=lambda word, **kwargs: is_term_ignored(
                     self._ignored_terms,
                     word,
                     **kwargs,
@@ -248,7 +248,7 @@ class WarningOnNavStrategy(OnNavStrategy):
         self,
         config: TitleCasingPluginConfig,
         config_file_path: str,
-        ignored_terms: dict[Term, Term],
+        ignored_terms: dict[str, Term],
     ) -> None:
         """Initialize WarningOnNavStrategy object."""
         super().__init__(config, ignored_terms)
@@ -301,7 +301,7 @@ class FixOnNavStrategy(OnNavStrategy):
     def __init__(
         self,
         config: TitleCasingPluginConfig,
-        ignored_terms: dict[Term, Term],
+        ignored_terms: dict[str, Term],
     ) -> None:
         """Initialize FixNavStrategy object."""
         super().__init__(config, ignored_terms)
@@ -406,7 +406,7 @@ class FixOnPageContentStrategy(OnPageContentStrategy):
     def __init__(
         self,
         config: TitleCasingPluginConfig,
-        ignored_terms: dict[Term, Term],
+        ignored_terms: dict[str, Term],
     ) -> None:
         """Initialize FixPageMarkdownStrategy object."""
         super().__init__(config, ignored_terms)

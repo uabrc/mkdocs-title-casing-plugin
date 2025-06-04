@@ -10,6 +10,7 @@ from mkdocs.config.base import Config
 
 from mkdocs_title_casing_plugin.string_helpers import (
     Term,
+    to_ignored_terms_mapping,
 )
 
 if TYPE_CHECKING:
@@ -38,12 +39,12 @@ def find_nav_line_number_in_config(config: MkDocsConfig) -> int | None:
 
 def prepare_ignored_terms(
     config: TitleCasingPluginConfig,
-) -> dict[Term, Term]:
+) -> dict[str, Term]:
     """Prepare casefold-to-canonical mapping."""
     if Path(config.ignore_definition_file).exists():
         with Path(config.ignore_definition_file).open("r") as f:
-            terms_to_ignore = [Term.from_string(line.strip()) for line in f]
+            lines = [line.strip() for line in f]
     else:
-        terms_to_ignore = []
+        lines = []
 
-    return {term.to_lookup_form(): term for term in terms_to_ignore}
+    return to_ignored_terms_mapping(lines)

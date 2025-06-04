@@ -14,42 +14,7 @@ HTML_HEADING_RE = re.compile(
     r"((?:<a|<\/h)(?:.*))$",  # suffix: "<a>&para;</a></h1>"
 )
 
-
-def ignore_term(
-    ignored_terms: dict[Term, Term],
-    term: str,
-    **kwargs,  # noqa: ANN003, ARG001 | Required by titlecase callback
-) -> str | None:
-    """Ignore titlecasing word if present in mapping.
-
-    Strips surrounding punctuation, then casefolds. If the stripped, casefolded
-    word is present in the mapping, then the mapped value is returned rewrapped
-    with its punctuation.
-
-    If it is not present, then attempt to find the word with its surrounding
-    punctuation. If present, then return the mapped value.
-
-    If still not present, return None.
-
-    Used as callback in titlecase(..., callback, ...).
-    """
-    lookup_term = Term.from_string(term).to_lookup_form()
-    if lookup_term in ignored_terms:
-        ignored_term = ignored_terms[lookup_term]
-
-        # If the exact canonical representation is not a subset of the lookup,
-        # then we're out. See Term.__contains__().
-        if ignored_term not in lookup_term:
-            return None
-
-        # Otherwise, return the canonical word wrapped with the lookup punctuation.
-        representation_term = ignored_term.adopt_prefix_and_suffix(lookup_term)
-        return str(representation_term)
-
-    return None
-
-
-HTML_UNSAFE_REPLACEMENTS = {
+HTML_UNSAFE_DECODINGS = {
     "&amp;": "&",
     "&quot;": '"',
     "&#039;": "'",
@@ -85,40 +50,47 @@ class Term:
         """Return the word of this Term."""
         return self._word
 
-    def __contains__(self, other: Term) -> bool:
-        """Return True if parts of other are in corresponding parts of self.
+    @property
+    def lookup_word(self) -> str:
+        """Return the word casefolded."""
+        return self._word.casefold()
 
-        `echo` in (`echo`) -> True
-        `echo` in `(echo)` -> True
-        `echo` in   echo   -> False
-        `echo` in   Echo   -> False
-
-        """
-        return (
-            other._prefix in self._prefix
-            and other.word in self.word
-            and other._suffix in self._suffix
-        )
+    @property
+    def has_affixes(self) -> bool:
+        """Return True if prefix or suffix are not empty."""
+        return len(self._prefix) > 0 or len(self._suffix) > 0
 
     def __eq__(self, other: Term) -> bool:
         """Return True if words match."""
-        return other.word == self.word
+        return (
+            other._prefix == self._prefix
+            and other._word == self._word
+            and other._suffix == self._prefix
+        )
 
     def __hash__(self) -> int:
         """Return hash of word."""
-        return hash(self.word)
+        return hash((self._prefix, self._word, self._suffix))
 
     def __str__(self) -> str:
         """Return full composed representation."""
         return self._prefix + self._word + self._suffix
 
-    def to_lookup_form(self) -> Term:
+    def to_match_form(self) -> Term:
         """Create new Term with casefolded word."""
         return Term(self._prefix, self._word.casefold(), self._suffix)
 
     def adopt_prefix_and_suffix(self, other: Term) -> Term:
         """Create new Term with self's word and other's prefix and suffix."""
         return Term(other._prefix, self._word, other._suffix)
+
+    def contains_affixes_from_and_has_same_word(self, other: Term) -> bool:
+        """Return True is affixes in, word equal."""
+        return (
+            other._prefix in self._prefix
+            and other._suffix in self._suffix
+            and other._word == self._word
+        )
 
     @classmethod
     def from_string(cls, term: str) -> Self:
@@ -135,12 +107,74 @@ class Term:
         return (prefix, stripped_word, suffix)
 
 
+def to_ignored_terms_mapping(lines: list[str]) -> dict[str, Term]:
+    """Convert a list of string terms into a Term object mapping."""
+    terms = [Term.from_string(line.strip()) for line in lines]
+    return {term.lookup_word: term for term in terms}
+
+
+def is_term_ignored(
+    ignored_terms: dict[str, Term],
+    term: str,
+    **kwargs,  # noqa: ANN003, ARG001 | Required by titlecase callback
+) -> str | None:
+    """Ignore titlecasing word if present in mapping.
+
+    Strips surrounding punctuation, then casefolds. If the stripped, casefolded
+    word is present in the mapping, then the mapped value is returned rewrapped
+    with its punctuation.
+
+    If it is not present, then attempt to find the word with its surrounding
+    punctuation. If present, then return the mapped value.
+
+    If still not present, return None.
+
+    Used as callback in titlecase(..., callback, ...).
+    """
+    # look up duple based on just the word
+    #   first is match term
+    #   second is canonical term
+
+    # then proceed to checking below
+
+    lookup_term = Term.from_string(term)
+    if lookup_term.lookup_word not in ignored_terms:
+        return None
+
+    canonical_term = ignored_terms[lookup_term.lookup_word]
+    soft_match_term = lookup_term.to_match_form()
+    canonical_soft_match_term = canonical_term.to_match_form()
+
+    # Exact match? return None
+    # Lookup has no punctuation, canonical has punctuation? return None
+    # Not contained match? return None
+
+    # Exact match
+    if lookup_term == canonical_term:
+        return str(canonical_term)
+
+    if not soft_match_term.has_affixes and canonical_term.has_affixes:
+        return None
+
+    if soft_match_term.has_affixes and not canonical_term.has_affixes:
+        return None
+
+    if not soft_match_term.contains_affixes_from_and_has_same_word(
+        canonical_soft_match_term,
+    ):
+        return None
+
+    # Otherwise, return the canonical word wrapped with the lookup punctuation.
+    representation_term = canonical_term.adopt_prefix_and_suffix(lookup_term)
+    return str(representation_term)
+
+
 def parse_html_heading(line: str) -> tuple[str, str, str] | None:
     """Parse a candidate HTML heading. Return None if no match."""
     match = HTML_HEADING_RE.fullmatch(line)
     if match is not None:
         heading = match[2]
-        for encoded, decoded in HTML_UNSAFE_REPLACEMENTS.items():
+        for encoded, decoded in HTML_UNSAFE_DECODINGS.items():
             heading = heading.replace(encoded, decoded)
         return (match[1], heading, match[3])
     return None

@@ -13,7 +13,15 @@ select = ["ALL"]
 
 [lint.per-file-ignores]
 "setup.py" = ["D100"]
-"test/*" = ["PT", "D100", "D101", "D102", "D107"]
+"test/*" = [
+  "ANN201",
+  "D100",
+  "D101",
+  "D102",
+  "D107",
+  "E501",
+  "PT",
+]
 
 [format]
 indent-style = "space"
