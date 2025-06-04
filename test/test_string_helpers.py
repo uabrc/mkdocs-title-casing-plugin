@@ -24,24 +24,20 @@ class TestFreeFunctions(unittest.TestCase):
         def check(term: str) -> str | None:
             return is_term_ignored(ignored_terms, term)
 
+        # NOT IN IGNORE LIST
         self.assertEqual(check("(`cat`)"), None)
         self.assertEqual(check("`cat`"), None)
         self.assertEqual(check("cat"), None)
 
-        self.assertEqual(check("(`mv`)"), None)
-        self.assertEqual(check("`mv`"), None)
+        # IN IGNORE LIST
+        self.assertEqual(check("(`mv`)"), "(`mv`)")
+        self.assertEqual(check("`mv`"), "`mv`")
         self.assertEqual(check("Mv"), "mv")
         self.assertEqual(check("mv"), "mv")
 
-        self.assertEqual(check("Echo"), None)
-        self.assertEqual(check("echo"), None)
-        self.assertEqual(check("(`echo`)"), "(`echo`)")
-        self.assertEqual(check("`(echo)`"), "`(echo)`")
-        self.assertEqual(check("`(echo`)"), "`(echo`)")
-        self.assertEqual(check("`echo`"), "`echo`")
-
         self.assertEqual(check("FAQ"), "FAQ")
         self.assertEqual(check("Faq"), "FAQ")
+        self.assertEqual(check("(FAQ)"), "(FAQ)")
 
         self.assertEqual(check("s3cmd"), "s3cmd")
         self.assertEqual(check("S3CMD"), "s3cmd")
@@ -50,6 +46,14 @@ class TestFreeFunctions(unittest.TestCase):
         self.assertEqual(check("iPad"), "iPad")
         self.assertEqual(check("IPAD"), "iPad")
         self.assertEqual(check("ipad"), "iPad")
+
+        # PUNCTUATED VERSION IN IGNORE LIST
+        self.assertEqual(check("Echo"), None)
+        self.assertEqual(check("echo"), None)
+        self.assertEqual(check("(`echo`)"), "(`echo`)")
+        self.assertEqual(check("`(echo)`"), "`(echo)`")
+        self.assertEqual(check("`(echo`)"), "`(echo`)")
+        self.assertEqual(check("`echo`"), "`echo`")
 
     def test_parse_html_heading(self):
         def parse(line: str) -> tuple[str, str, str] | None:

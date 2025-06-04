@@ -76,7 +76,7 @@ class Term:
         """Return full composed representation."""
         return self._prefix + self._word + self._suffix
 
-    def to_match_form(self) -> Term:
+    def casefold(self) -> Term:
         """Create new Term with casefolded word."""
         return Term(self._prefix, self._word.casefold(), self._suffix)
 
@@ -84,11 +84,18 @@ class Term:
         """Create new Term with self's word and other's prefix and suffix."""
         return Term(other._prefix, self._word, other._suffix)
 
-    def contains_affixes_from_and_has_same_word(self, other: Term) -> bool:
+    def has_same_word_superset_affixes(self, other: Term) -> bool:
         """Return True is affixes in, word equal."""
         return (
             other._prefix in self._prefix
             and other._suffix in self._suffix
+            and other._word == self._word
+        )
+
+    def has_same_word_subset_affixes(self, other: Term) -> bool:
+        return (
+            self._prefix in other._prefix
+            and self._suffix in other._suffix
             and other._word == self._word
         )
 
@@ -120,14 +127,15 @@ def is_term_ignored(
 ) -> str | None:
     """Ignore titlecasing word if present in mapping.
 
-    Strips surrounding punctuation, then casefolds. If the stripped, casefolded
-    word is present in the mapping, then the mapped value is returned rewrapped
-    with its punctuation.
-
-    If it is not present, then attempt to find the word with its surrounding
-    punctuation. If present, then return the mapped value.
-
-    If still not present, return None.
+    - Will return the canonical representation of the input Term's word surrounded
+      by the input Term's punctuation, or none.
+    - A string is returned whenever the input word is an exact match, and the
+      input term has the same set of punctuation as, or larger than, the
+      canonical representation.
+    - Punctuation order does not matter.
+    - A string is also returned whenever the input word is a casefolded match
+      and an exact punctuation match.
+    - None is returned in all other cases.
 
     Used as callback in titlecase(..., callback, ...).
     """
@@ -142,26 +150,37 @@ def is_term_ignored(
         return None
 
     canonical_term = ignored_terms[lookup_term.lookup_word]
-    soft_match_term = lookup_term.to_match_form()
-    canonical_soft_match_term = canonical_term.to_match_form()
+    representation_term = canonical_term.adopt_prefix_and_suffix(lookup_term)
 
-    # Exact match? return None
-    # Lookup has no punctuation, canonical has punctuation? return None
-    # Not contained match? return None
-
-    # Exact match
+    ### EXACT WORD MATCHES
+    # Exact word match, exact affix match.
+    # FAQ? == FAQ? => FAQ?
     if lookup_term == canonical_term:
-        return str(canonical_term)
+        return str(representation_term)
 
-    if not soft_match_term.has_affixes and canonical_term.has_affixes:
+    # Exact word match, lookup affix superset canonical.
+    # FAQ? > FAQ => FAQ?
+    if lookup_term.has_same_word_superset_affixes(canonical_term):
+        return str(representation_term)
+
+    # Exact word match, lookup affix subset canonical.
+    # FAQ < FAQ? => FAQ
+    if lookup_term.has_same_word_subset_affixes(canonical_term):
         return None
 
-    if soft_match_term.has_affixes and not canonical_term.has_affixes:
+    ### CASEFOLD WORD MATCHES
+    casefold_lookup_term = lookup_term.casefold()
+    casefold_canonical_term = canonical_term.casefold()
+    # Casefold word match, exact affix match.
+    if casefold_lookup_term == casefold_canonical_term:
+        return str(representation_term)
+
+    # Casefold word match, lookup affix superset canonical.
+    if casefold_lookup_term.has_same_word_superset_affixes(casefold_canonical_term):
         return None
 
-    if not soft_match_term.contains_affixes_from_and_has_same_word(
-        canonical_soft_match_term,
-    ):
+    # Casefold word match, lookup affix subset canonical.
+    if casefold_lookup_term.has_same_word_subset_affixes(casefold_canonical_term):
         return None
 
     # Otherwise, return the canonical word wrapped with the lookup punctuation.
