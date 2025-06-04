@@ -16,7 +16,7 @@ setup(
     keywords="mkdocs title case casing plugin",
     url="https://github.com/uabrc/mkdocs-title-casing-plugin",
     author="wwarriner",
-    version="1.2.0",
+    version="1.2.1",
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
