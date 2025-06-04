@@ -17,10 +17,11 @@ from titlecase import titlecase
 from mkdocs_title_casing_plugin.config import (
     TitleCasingPluginConfig,
     find_nav_line_number_in_config,
-    prepare_ignore_casefold_mapping,
+    prepare_ignored_terms,
 )
 from mkdocs_title_casing_plugin.string_helpers import (
-    ignore_word,
+    Term,
+    ignore_term,
     parse_html_heading,
 )
 
@@ -39,7 +40,7 @@ class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
     def __init__(self) -> None:
         """Initialize TitleCasingPlugin object."""
         self._nav_config_line_number: int = 0
-        self._ignored_casefold_mapping: dict[str, str] = {}
+        self._ignored_terms: dict[Term, Term] = {}
 
     def on_config(self, config: MkDocsConfig) -> None:
         """Gather initialization information from config."""
@@ -52,7 +53,7 @@ class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
             raise RuntimeError
 
         self._nav_config_line_number = nav_config_line_number
-        self._ignored_casefold_mapping = prepare_ignore_casefold_mapping(self.config)
+        self._ignored_terms = prepare_ignored_terms(self.config)
 
     def on_nav(
         self,
@@ -66,12 +67,12 @@ class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
 
         mode = self.config.mode
         if mode == "fix":
-            strategy = FixOnNavStrategy(self.config, self._ignored_casefold_mapping)
+            strategy = FixOnNavStrategy(self.config, self._ignored_terms)
         elif mode == "warn":
             strategy = WarningOnNavStrategy(
                 self.config,
                 self.config.config_file_path,
-                self._ignored_casefold_mapping,
+                self._ignored_terms,
             )
         else:
             msg = f"Unexpected mode: {mode}"
@@ -99,12 +100,12 @@ class TitleCasingPlugin(BasePlugin[TitleCasingPluginConfig]):
         if mode == "fix":
             strategy = FixOnPageContentStrategy(
                 self.config,
-                self._ignored_casefold_mapping,
+                self._ignored_terms,
             )
         elif mode == "warn":
             strategy = WarningOnPageContentStrategy(
                 self.config,
-                self._ignored_casefold_mapping,
+                self._ignored_terms,
             )
         else:
             msg = f"Unexpected mode: {mode}"
@@ -119,11 +120,11 @@ class Strategy:
     def __init__(
         self,
         config: TitleCasingPluginConfig,
-        ignored_casefold_mapping: dict[str, str],
+        ignored_terms: dict[Term, Term],
     ) -> None:
         """Initialize new Strategy."""
         self._config: TitleCasingPluginConfig = config
-        self._ignored_casefold_mapping: dict[str, str] = ignored_casefold_mapping
+        self._ignored_terms: dict[Term, Term] = ignored_terms
 
     def _handle_heading(
         self,
@@ -159,8 +160,8 @@ class Strategy:
         elif capitalization_type == "title":
             out = titlecase(
                 _v,
-                callback=lambda word, **kwargs: ignore_word(
-                    self._ignored_casefold_mapping,
+                callback=lambda word, **kwargs: ignore_term(
+                    self._ignored_terms,
                     word,
                     **kwargs,
                 ),
@@ -247,10 +248,10 @@ class WarningOnNavStrategy(OnNavStrategy):
         self,
         config: TitleCasingPluginConfig,
         config_file_path: str,
-        ignored_casefold_mapping: dict[str, str],
+        ignored_terms: dict[Term, Term],
     ) -> None:
         """Initialize WarningOnNavStrategy object."""
-        super().__init__(config, ignored_casefold_mapping)
+        super().__init__(config, ignored_terms)
         self._config_file_path = config_file_path
 
     def _before_section(self) -> None:
@@ -300,10 +301,10 @@ class FixOnNavStrategy(OnNavStrategy):
     def __init__(
         self,
         config: TitleCasingPluginConfig,
-        ignored_casefold_mapping: dict[str, str],
+        ignored_terms: dict[Term, Term],
     ) -> None:
         """Initialize FixNavStrategy object."""
-        super().__init__(config, ignored_casefold_mapping)
+        super().__init__(config, ignored_terms)
         self._pages: list[Page] = []
         self._items: list[Item] = []
 
@@ -405,10 +406,10 @@ class FixOnPageContentStrategy(OnPageContentStrategy):
     def __init__(
         self,
         config: TitleCasingPluginConfig,
-        ignored_casefold_mapping: dict[str, str],
+        ignored_terms: dict[Term, Term],
     ) -> None:
         """Initialize FixPageMarkdownStrategy object."""
-        super().__init__(config, ignored_casefold_mapping)
+        super().__init__(config, ignored_terms)
         self._lines: list[str] = []
 
     def _handle_markdown_nonheading_line(self, line: str, _file_path: str) -> None:

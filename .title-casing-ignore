@@ -1,4 +1,4 @@
 s3cmd
 iPad
 mv
-(echo)
+`echo`

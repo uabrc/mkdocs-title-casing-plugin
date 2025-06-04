@@ -8,6 +8,10 @@ from typing import TYPE_CHECKING
 from mkdocs.config import config_options
 from mkdocs.config.base import Config
 
+from mkdocs_title_casing_plugin.string_helpers import (
+    Term,
+)
+
 if TYPE_CHECKING:
     from mkdocs.config.defaults import MkDocsConfig
 
@@ -32,12 +36,14 @@ def find_nav_line_number_in_config(config: MkDocsConfig) -> int | None:
     return None
 
 
-def prepare_ignore_casefold_mapping(config: TitleCasingPluginConfig) -> dict[str, str]:
+def prepare_ignored_terms(
+    config: TitleCasingPluginConfig,
+) -> dict[Term, Term]:
     """Prepare casefold-to-canonical mapping."""
     if Path(config.ignore_definition_file).exists():
         with Path(config.ignore_definition_file).open("r") as f:
-            ignored = [line.strip() for line in f]
+            terms_to_ignore = [Term.from_string(line.strip()) for line in f]
     else:
-        ignored = []
+        terms_to_ignore = []
 
-    return {word.casefold(): word for word in ignored}
+    return {term.to_lookup_form(): term for term in terms_to_ignore}
