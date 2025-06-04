@@ -73,7 +73,7 @@ class Term:
     echo_term.adopt_prefix_and_suffix(Term("<", _, ">")) -> Term("<", "Echo", ">")
     echo_no_punctuation_term in echo_term -> True
     echo_term in echo_no_punctuation_term -> False
-    echo_term in Term("<`", "echo", "`>") -> True
+    echo_term in Term("<`", "echo", ">`") -> True
     """
 
     _prefix: str
